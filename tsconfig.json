@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2020",
+    "types": [
+      "node"
+    ], // include Node types
+    "esModuleInterop": true, // allow import = require
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "outDir": "dist"
+  }
+}
