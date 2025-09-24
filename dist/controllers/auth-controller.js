@@ -4,9 +4,10 @@ exports.register = void 0;
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { PrismaClient } = require("../generated/prisma");
+// ✅ Fix: Import from @prisma/client instead of generated folder
+const client_1 = require("@prisma/client");
 const { sendEmail } = require("../lib/mail");
-const prisma = new PrismaClient();
+const prisma = new client_1.PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 function generateCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();

@@ -1,7 +1,8 @@
 import bcrypt = require("bcrypt");
 import jwt = require("jsonwebtoken");
 import crypto = require("crypto");
-const { PrismaClient } = require("../generated/prisma");
+// ✅ Fix: Import from @prisma/client instead of generated folder
+import { PrismaClient } from "@prisma/client";
 import express = require("express");
 const { sendEmail } = require("../lib/mail")
 
@@ -11,7 +12,6 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
 function generateCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
-
 
 export const register = async (req: express.Request, res: express.Response) => {
     const { email, password, name } = req.body;
@@ -92,7 +92,6 @@ const login = async (req: express.Request, res: express.Response) => {
 
     res.json({ accessToken, refreshToken });
 };
-
 
 const requestPasswordReset = async (req: express.Request, res: express.Response) => {
     const { email } = req.body;

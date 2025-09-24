@@ -6,9 +6,11 @@
   "author": "Ntlaloe",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon --watch . -e ts --exec ts-node server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "build": "tsc && prisma generate",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
