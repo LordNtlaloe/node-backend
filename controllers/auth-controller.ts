@@ -38,7 +38,7 @@ export const register = async (req: express.Request, res: express.Response) => {
     res.json({ message: "User registered. Check email for verification code." });
 };
 
-const verify = async (req: express.Request, res: express.Response) => {
+export const verify = async (req: express.Request, res: express.Response) => {
     const { email, code } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(400).json({ error: "Invalid email" });
@@ -60,7 +60,7 @@ const verify = async (req: express.Request, res: express.Response) => {
     res.json({ message: "User verified successfully" });
 };
 
-const login = async (req: express.Request, res: express.Response) => {
+export const login = async (req: express.Request, res: express.Response) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -93,7 +93,7 @@ const login = async (req: express.Request, res: express.Response) => {
     res.json({ accessToken, refreshToken });
 };
 
-const requestPasswordReset = async (req: express.Request, res: express.Response) => {
+export const requestPasswordReset = async (req: express.Request, res: express.Response) => {
     const { email } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(400).json({ error: "User not found" });
@@ -113,7 +113,7 @@ const requestPasswordReset = async (req: express.Request, res: express.Response)
     res.json({ message: "Password reset email sent" });
 };
 
-const resetPassword = async (req: express.Request, res: express.Response) => {
+export const resetPassword = async (req: express.Request, res: express.Response) => {
     const { email, token, newPassword } = req.body;
 
     const user = await prisma.user.findUnique({ where: { email } });
