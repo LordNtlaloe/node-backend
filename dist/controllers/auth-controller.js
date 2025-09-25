@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.register = void 0;
+exports.resetPassword = exports.requestPasswordReset = exports.login = exports.verify = exports.register = void 0;
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -49,6 +49,7 @@ const verify = async (req, res) => {
     ]);
     res.json({ message: "User verified successfully" });
 };
+exports.verify = verify;
 const login = async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -77,6 +78,7 @@ const login = async (req, res) => {
     });
     res.json({ accessToken, refreshToken });
 };
+exports.login = login;
 const requestPasswordReset = async (req, res) => {
     const { email } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
@@ -92,6 +94,7 @@ const requestPasswordReset = async (req, res) => {
     await sendEmail(email, "Reset your password", `Click here to reset: ${resetUrl}`);
     res.json({ message: "Password reset email sent" });
 };
+exports.requestPasswordReset = requestPasswordReset;
 const resetPassword = async (req, res) => {
     const { email, token, newPassword } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
@@ -114,5 +117,6 @@ const resetPassword = async (req, res) => {
     ]);
     res.json({ message: "Password updated successfully" });
 };
+exports.resetPassword = resetPassword;
 // ✅ Export CommonJS style
-module.exports = { register: exports.register, verify, login, requestPasswordReset, resetPassword };
+module.exports = { register: exports.register, verify: exports.verify, login: exports.login, requestPasswordReset: exports.requestPasswordReset, resetPassword: exports.resetPassword };
