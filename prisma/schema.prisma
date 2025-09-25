@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,20 +7,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  name          String?
-  passwordHash  String
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  isVerified    Boolean        @default(false)
-  refreshTokens RefreshToken[]
-
-  VerificationCode VerificationCode[]
-  PasswordReset    PasswordReset[]
+enum Role {
+  ADMIN
+  DOCTOR
+  NURSE
+  PATIENT
 }
 
+model User {
+  id            String           @id @default(cuid())
+  email         String           @unique
+  name          String?
+  passwordHash  String
+  role          Role             @default(PATIENT)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  isVerified    Boolean          @default(false)
+
+  refreshTokens     RefreshToken[]
+  VerificationCode  VerificationCode[]
+  PasswordReset     PasswordReset[]
+
+  // Link to patient record (only if role = PATIENT)
+  patientProfile    Patient?
+}
+ 
 model RefreshToken {
   id           String        @id @default(cuid())
   user         User          @relation(fields: [userId], references: [id])
@@ -45,7 +50,7 @@ model VerificationCode {
   id        String   @id @default(cuid())
   user      User     @relation(fields: [userId], references: [id])
   userId    String
-  code      String // 6-digit code as string
+  code      String
   createdAt DateTime @default(now())
   expiresAt DateTime
   used      Boolean  @default(false)
@@ -58,5 +63,38 @@ model PasswordReset {
   tokenHash String
   expiresAt DateTime
   used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Patient {
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String   @unique
+  firstName      String
+  lastName       String
+  age            Int
+  contactInfo    String
+  medicalHistory String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  visits         Visit[]
+}
+
+model Visit {
+  id        String    @id @default(cuid())
+  patient   Patient   @relation(fields: [patientId], references: [id])
+  patientId String
+  date      DateTime  @default(now())
+  notes     String?
+  treatments Treatment[]
+}
+
+model Treatment {
+  id        String   @id @default(cuid())
+  visit     Visit    @relation(fields: [visitId], references: [id])
+  visitId   String
+  name      String
+  dosage    String?
+  notes     String?
   createdAt DateTime @default(now())
 }

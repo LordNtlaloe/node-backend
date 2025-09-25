@@ -12,6 +12,7 @@ interface AuthRequest extends Request {
         email: string;
         password: string;
         name?: string;
+        role: string
         code?: string;
         token?: string;
         newPassword?: string;
@@ -24,7 +25,7 @@ function generateCode(): string {
 
 export const register = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { email, password, name } = req.body;
+        const { email, password, name, role } = req.body;
 
         if (!email || !password) {
             res.status(400).json({ error: "Email and password are required" });

@@ -4,6 +4,9 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import cors from "cors";
 import authRoutes from "./routes/auth";
+import patientRoutes from "./routes/patients"
+import treatmentRoutes from "./routes/treatment"
+import visitRoutes from "./routes/visits"
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -27,6 +30,9 @@ app.use(rateLimit({
 
 // Routes
 app.use("/auth", authRoutes);
+app.use("/patients", patientRoutes)
+app.use("/treatment", treatmentRoutes)
+app.use("/visists", visitRoutes)
 
 app.get("/", (req: Request, res: Response) => {
     res.json({
