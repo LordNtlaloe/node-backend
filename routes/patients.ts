@@ -1,23 +1,22 @@
+// routes/patient-routes.ts
 import express from "express";
 import {
-    getPatientById,
-    getPatients,
+    createPatient,
+    getPatient,
+    getAllPatients,
     updatePatient,
     deletePatient,
-    createPatient,
-    searchPatients
+    getPatientStats
 } from "../controllers/patient-controller";
 
 const router = express.Router();
 
-// CRUD
-router.get("/patients/:id", getPatientById);
-router.get("/patients", getPatients);
-router.post("/patients", createPatient);
-router.put("/patients/:id", updatePatient);
-router.delete("/patients/:id", deletePatient);
-
-// Search
-router.get("/patients/search", searchPatients);
+// Group all routes under /patients
+router.post("/", createPatient);
+router.get("/", getAllPatients);
+router.get("/:id", getPatient);
+router.get("/:id/stats", getPatientStats);
+router.put("/:id", updatePatient);
+router.delete("/:id", deletePatient);
 
 export default router;

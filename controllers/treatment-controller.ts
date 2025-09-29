@@ -1,57 +1,86 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import crypto from "crypto";
 import { Request, Response } from "express";
 import { prisma } from "../lib/prisma";
-import { sendEmail } from "../lib/mail";
 
 interface TreatmentRequest extends Request {
     body: {
-        visitId?: string;
-        name?: string;
-        dosage?: string;
-        notes?: string;
+        visitId: string;
+        name: string;
+        description?: string;
+        duration?: string;
+        instructions?: string;
     }
 }
 
-export const createTreatment = async (req: TreatmentRequest, res: Response) => {
+export const createTreatment = async (req: TreatmentRequest, res: Response): Promise<void> => {
     try {
-        const { visitId, name, dosage, notes } = req.body;
+        const {
+            visitId,
+            name,
+            description,
+            duration,
+            instructions
+        } = req.body;
 
-        if (!visitId || !name) {
-            res.status(400).json({ error: "Visit ID and treatment name are required" });
+        // Check if visit exists
+        const visit = await prisma.visit.findUnique({ where: { id: visitId } });
+        if (!visit) {
+            res.status(404).json({ error: "Visit not found" });
             return;
         }
 
         const treatment = await prisma.treatment.create({
-            data: { visitId, name, dosage, notes }
+            data: {
+                visitId,
+                name,
+                description,
+                duration,
+                instructions
+            },
+            include: {
+                visit: {
+                    include: {
+                        patient: {
+                            select: {
+                                firstName: true,
+                                lastName: true
+                            }
+                        }
+                    }
+                }
+            }
         });
 
-        res.status(201).json({ message: "Treatment record saved successfully", treatment });
+        res.status(201).json(treatment);
     } catch (error) {
         console.error("Create treatment error:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 };
 
-export const getTreatments = async (req: Request, res: Response) => {
-    try {
-        const treatments = await prisma.treatment.findMany({
-            include: { visit: { include: { patient: true } } }
-        });
-        res.json(treatments);
-    } catch (error) {
-        console.error("Get treatments error:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
-
-export const getTreatmentById = async (req: Request, res: Response) => {
+export const getTreatment = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
+
         const treatment = await prisma.treatment.findUnique({
             where: { id },
-            include: { visit: { include: { patient: true } } }
+            include: {
+                visit: {
+                    include: {
+                        patient: {
+                            select: {
+                                firstName: true,
+                                lastName: true
+                            }
+                        },
+                        assignedStaff: {
+                            select: {
+                                firstName: true,
+                                lastName: true
+                            }
+                        }
+                    }
+                }
+            }
         });
 
         if (!treatment) {
@@ -66,41 +95,89 @@ export const getTreatmentById = async (req: Request, res: Response) => {
     }
 };
 
-export const updateTreatment = async (req: TreatmentRequest, res: Response) => {
+export const getVisitTreatments = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { visitId } = req.params;
+
+        // Check if visit exists
+        const visit = await prisma.visit.findUnique({ where: { id: visitId } });
+        if (!visit) {
+            res.status(404).json({ error: "Visit not found" });
+            return;
+        }
+
+        const treatments = await prisma.treatment.findMany({
+            where: { visitId },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        res.json(treatments);
+    } catch (error) {
+        console.error("Get visit treatments error:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const updateTreatment = async (req: TreatmentRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const { name, dosage, notes } = req.body;
+        const {
+            name,
+            description,
+            duration,
+            instructions
+        } = req.body;
+
+        const existingTreatment = await prisma.treatment.findUnique({ where: { id } });
+        if (!existingTreatment) {
+            res.status(404).json({ error: "Treatment not found" });
+            return;
+        }
 
         const treatment = await prisma.treatment.update({
             where: { id },
-            data: { name, dosage, notes }
+            data: {
+                name,
+                description,
+                duration,
+                instructions
+            },
+            include: {
+                visit: {
+                    include: {
+                        patient: {
+                            select: {
+                                firstName: true,
+                                lastName: true
+                            }
+                        }
+                    }
+                }
+            }
         });
 
-        res.json({ message: "Treatment record updated successfully", treatment });
+        res.json(treatment);
     } catch (error) {
         console.error("Update treatment error:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 };
 
-export const deleteTreatment = async (req: Request, res: Response) => {
+export const deleteTreatment = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
+
+        const existingTreatment = await prisma.treatment.findUnique({ where: { id } });
+        if (!existingTreatment) {
+            res.status(404).json({ error: "Treatment not found" });
+            return;
+        }
+
         await prisma.treatment.delete({ where: { id } });
-        res.json({ message: "Treatment record deleted successfully" });
+
+        res.json({ message: "Treatment deleted successfully" });
     } catch (error) {
         console.error("Delete treatment error:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
-};
-
-export const getTreatmentsByVisit = async (req: Request, res: Response) => {
-    try {
-        const { visitId } = req.params;
-        const treatments = await prisma.treatment.findMany({ where: { visitId } });
-        res.json(treatments);
-    } catch (error) {
-        console.error("Get treatments by visit error:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 };

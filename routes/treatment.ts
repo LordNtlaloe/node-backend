@@ -1,23 +1,18 @@
 import express from "express";
 import {
     createTreatment,
-    getTreatments,
-    getTreatmentById,
+    getTreatment,
+    getVisitTreatments,
     updateTreatment,
-    deleteTreatment,
-    getTreatmentsByVisit
+    deleteTreatment
 } from "../controllers/treatment-controller";
 
 const router = express.Router();
 
-// CRUD
-router.post("/treatments", createTreatment);       // Create new treatment
-router.get("/treatments", getTreatments);          // Get all treatments
-router.get("/treatments/:id", getTreatmentById);   // Get treatment by ID
-router.put("/treatments/:id", updateTreatment);    // Update treatment
-router.delete("/treatments/:id", deleteTreatment); // Delete treatment
-
-// Extra
-router.get("/visits/:visitId/treatments", getTreatmentsByVisit); // Get treatments linked to a visit
+router.post("treatments/", createTreatment);
+router.get("treatments/visit/:visitId", getVisitTreatments);
+router.get("treatments/:id", getTreatment);
+router.put("treatments/:id", updateTreatment);
+router.delete("treatments/:id", deleteTreatment);
 
 export default router;

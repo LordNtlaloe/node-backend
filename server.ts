@@ -7,6 +7,10 @@ import authRoutes from "./routes/auth";
 import patientRoutes from "./routes/patients"
 import treatmentRoutes from "./routes/treatment"
 import visitRoutes from "./routes/visits"
+import prescriptionRoutes from "./routes/prescriptions"
+import userRoutes from "./routes/user"
+import appointmetRoutes from "./routes/appointments"
+import staffRoutes from "./routes/staff"
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -32,7 +36,11 @@ app.use(rateLimit({
 app.use("/auth", authRoutes);
 app.use("/patients", patientRoutes)
 app.use("/treatment", treatmentRoutes)
-app.use("/visists", visitRoutes)
+app.use("/visits", visitRoutes)
+app.use("/prescriptions", prescriptionRoutes)
+app.use("/users", userRoutes)
+app.use("/appointments", appointmetRoutes)
+app.use("/staff", staffRoutes)
 
 app.get("/", (req: Request, res: Response) => {
     res.json({

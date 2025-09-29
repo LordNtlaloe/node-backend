@@ -1,3 +1,4 @@
+// schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,26 +13,65 @@ enum Role {
   DOCTOR
   NURSE
   PATIENT
+  RECEPTIONIST
+  PHARMASIST
 }
 
+enum VisitType {
+  CHECKUP
+  EMERGENCY
+  FOLLOWUP
+  SPECIALIST
+  ROUTINE
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum TrendDirection {
+  INCREASING
+  DECREASING
+  STABLE
+  FLUCTUATING
+}
+
+// User Management & Authentication
 model User {
-  id            String           @id @default(cuid())
-  email         String           @unique
-  name          String?
-  passwordHash  String
-  role          Role             @default(PATIENT)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  isVerified    Boolean          @default(false)
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  role         Role     @default(PATIENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  isVerified   Boolean  @default(false)
 
-  refreshTokens     RefreshToken[]
-  VerificationCode  VerificationCode[]
-  PasswordReset     PasswordReset[]
+  // Authentication
+  refreshTokens    RefreshToken[]
+  VerificationCode VerificationCode[]
+  PasswordReset    PasswordReset[]
 
-  // Link to patient record (only if role = PATIENT)
-  patientProfile    Patient?
+  // Role-specific relationships
+  patientProfile Patient?
+  staffProfile   Staff?
+
+  @@index([email])
+  @@index([role])
+  @@index([createdAt])
 }
- 
+
 model RefreshToken {
   id           String        @id @default(cuid())
   user         User          @relation(fields: [userId], references: [id])
@@ -44,6 +84,10 @@ model RefreshToken {
   replacedBy   RefreshToken? @relation("Replacement", fields: [replacedById], references: [id])
 
   RefreshToken RefreshToken[] @relation("Replacement")
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
 }
 
 model VerificationCode {
@@ -54,6 +98,10 @@ model VerificationCode {
   createdAt DateTime @default(now())
   expiresAt DateTime
   used      Boolean  @default(false)
+
+  @@index([userId])
+  @@index([code])
+  @@index([expiresAt])
 }
 
 model PasswordReset {
@@ -64,37 +112,340 @@ model PasswordReset {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([expiresAt])
 }
 
-model Patient {
+// Staff Management
+model Staff {
   id             String   @id @default(cuid())
   user           User     @relation(fields: [userId], references: [id])
   userId         String   @unique
   firstName      String
   lastName       String
-  age            Int
+  department     String // "CARDIOLOGY", "PEDIATRICS", "EMERGENCY"
+  specialization String?
+  licenseNumber  String?
   contactInfo    String
-  medicalHistory String?
+  isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  visits         Visit[]
+
+  // Staff can be assigned to visits
+  assignedVisits Visit[]
+  Appointment    Appointment[]
+
+  @@index([firstName, lastName])
+  @@index([department])
+  @@index([licenseNumber])
 }
 
+// Core Patient Information
+model Patient {
+  id                String   @id @default(cuid())
+  user              User     @relation(fields: [userId], references: [id])
+  userId            String   @unique
+  firstName         String
+  lastName          String
+  dateOfBirth       DateTime
+  age               Int
+  gender            String
+  contactInfo       String
+  address           String?
+  emergencyContact  String?
+  bloodType         String? // "A+", "O-", etc.
+  allergies         String?
+  chronicConditions String? // Pre-existing conditions
+  medicalHistory    String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relationships
+  visits           Visit[]
+  vitalSigns       VitalSigns[]
+  labResults       LabResult[]
+  diagnoses        Diagnosis[]
+  appointments     Appointment[]
+  healthAlerts     HealthAlert[]
+  medications      Medication[]
+  healthTrends     HealthTrend[]
+  TreatmentPattern TreatmentPattern[]
+
+  @@index([firstName, lastName])
+  @@index([dateOfBirth])
+  @@index([createdAt])
+  @@index([isActive])
+}
+
+// Clinical Visits - Enhanced for Analytics
 model Visit {
-  id        String    @id @default(cuid())
-  patient   Patient   @relation(fields: [patientId], references: [id])
-  patientId String
-  date      DateTime  @default(now())
-  notes     String?
-  treatments Treatment[]
+  id               String    @id @default(cuid())
+  patient          Patient   @relation(fields: [patientId], references: [id])
+  patientId        String
+  assignedStaff    Staff?    @relation(fields: [staffId], references: [id])
+  staffId          String?
+  date             DateTime  @default(now())
+  visitType        VisitType
+  chiefComplaint   String? // Main reason for visit
+  subjective       String? // Patient's description
+  objective        String? // Clinical observations
+  assessment       String? // Professional assessment
+  plan             String? // Treatment plan
+  notes            String?
+  followUpRequired Boolean   @default(false)
+  followUpDate     DateTime?
+
+  // Clinical relationships
+  vitalSigns    VitalSigns?
+  treatments    Treatment[]
+  labResults    LabResult[]
+  diagnoses     Diagnosis[]
+  prescriptions Prescription[]
+
+  @@index([patientId])
+  @@index([date])
+  @@index([visitType])
+  @@index([staffId])
+  @@index([patientId, date])
 }
 
+// Structured Clinical Data for AI Analysis
+model VitalSigns {
+  id                     String   @id @default(cuid())
+  patient                Patient  @relation(fields: [patientId], references: [id])
+  patientId              String
+  visit                  Visit?   @relation(fields: [visitId], references: [id])
+  visitId                String? @unique
+  recordedAt             DateTime @default(now())
+  bloodPressureSystolic  Int? // 120
+  bloodPressureDiastolic Int? // 80
+  heartRate              Int? // 72
+  temperature            Float? // 98.6
+  weight                 Float? // 68.5 (kg)
+  height                 Float? // 170 (cm)
+  bmi                    Float? // 23.7
+  bloodSugar             Float? // 95 mg/dL
+  oxygenSaturation       Int? // 98%
+  respiratoryRate        Int? // 16
+  notes                  String?
+
+  @@index([patientId])
+  @@index([recordedAt])
+  @@index([patientId, recordedAt])
+}
+
+model LabResult {
+  id           String   @id @default(cuid())
+  patient      Patient  @relation(fields: [patientId], references: [id])
+  patientId    String
+  visit        Visit?   @relation(fields: [visitId], references: [id])
+  visitId      String?
+  testName     String // "Complete Blood Count", "Blood Glucose"
+  testCategory String // "HEMATOLOGY", "BIOCHEMISTRY", "MICROBIOLOGY"
+  resultValue  String // "Normal", "High", "120 mg/dL"
+  normalRange  String? // "70-100 mg/dL"
+  units        String? // "mg/dL", "mmol/L"
+  isAbnormal   Boolean  @default(false)
+  date         DateTime @default(now())
+  notes        String?
+
+  @@index([patientId])
+  @@index([testName])
+  @@index([date])
+  @@index([isAbnormal])
+}
+
+model Diagnosis {
+  id          String    @id @default(cuid())
+  patient     Patient   @relation(fields: [patientId], references: [id])
+  patientId   String
+  visit       Visit?    @relation(fields: [visitId], references: [id])
+  visitId     String?
+  icd10Code   String? // "E11.9", "I10"
+  name        String // "Type 2 Diabetes", "Essential Hypertension"
+  description String?
+  isChronic   Boolean   @default(false) // For pattern detection
+  isActive    Boolean   @default(true)
+  date        DateTime  @default(now())
+  resolvedAt  DateTime?
+
+  @@index([patientId])
+  @@index([icd10Code])
+  @@index([isChronic])
+  @@index([date])
+}
+
+// Treatment & Medication Management
 model Treatment {
-  id        String   @id @default(cuid())
-  visit     Visit    @relation(fields: [visitId], references: [id])
-  visitId   String
-  name      String
-  dosage    String?
-  notes     String?
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  visit        Visit    @relation(fields: [visitId], references: [id])
+  visitId      String
+  name         String // "Physical Therapy", "Suture Removal"
+  description  String?
+  duration     String? // "2 weeks", "1 month"
+  instructions String?
+  createdAt    DateTime @default(now())
+
+  @@index([visitId])
+  @@index([name])
+}
+
+model Medication {
+  id           String    @id @default(cuid())
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  patientId    String
+  name         String
+  dosage       String // "500mg", "10 units"
+  frequency    String // "Twice daily", "Once a week"
+  route        String? // "Oral", "IV", "Topical"
+  purpose      String?
+  startDate    DateTime
+  endDate      DateTime?
+  isActive     Boolean   @default(true)
+  prescribedBy String?
+  notes        String?
+
+  @@index([patientId])
+  @@index([name])
+  @@index([isActive])
+  @@index([startDate])
+}
+
+model Prescription {
+  id           String   @id @default(cuid())
+  visit        Visit    @relation(fields: [visitId], references: [id])
+  visitId      String
+  medication   String
+  dosage       String
+  frequency    String
+  duration     String
+  instructions String?
+  prescribedBy String?
+  isDispensed  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([visitId])
+  @@index([createdAt])
+}
+
+// AI & Analytics Components
+model HealthAlert {
+  id             String        @id @default(cuid())
+  patient        Patient       @relation(fields: [patientId], references: [id])
+  patientId      String
+  type           String // "TREND", "RISK", "ANOMALY", "REMINDER"
+  title          String
+  message        String // "Gradual weight loss detected over 3 visits"
+  severity       AlertSeverity
+  relatedData    String? // JSON with triggering data points
+  triggeredAt    DateTime      @default(now())
+  acknowledged   Boolean       @default(false)
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  isResolved     Boolean       @default(false)
+  resolvedAt     DateTime?
+
+  @@index([patientId])
+  @@index([type])
+  @@index([severity])
+  @@index([triggeredAt])
+  @@index([isResolved])
+}
+
+model HealthTrend {
+  id               String         @id @default(cuid())
+  patient          Patient        @relation(fields: [patientId], references: [id])
+  patientId        String
+  metric           String // "WEIGHT", "BLOOD_PRESSURE", "BLOOD_SUGAR", "BMI"
+  trend            TrendDirection
+  period           String // "LAST_30_DAYS", "LAST_6_MONTHS", "YEARLY"
+  currentValue     Float
+  previousValue    Float
+  changePercentage Float
+  summary          String // "Average increase of 2kg per month"
+  confidence       Float // AI confidence score 0-1
+  calculatedAt     DateTime       @default(now())
+
+  @@index([patientId])
+  @@index([metric])
+  @@index([trend])
+  @@index([calculatedAt])
+}
+
+model TreatmentPattern {
+  id          String   @id @default(cuid())
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  patientId   String
+  patternType String // "RECURRING_ISSUE", "MEDICATION_TREND", "VISIT_FREQUENCY"
+  description String
+  frequency   String? // "Monthly", "Quarterly"
+  confidence  Float // AI confidence score 0-1
+  detectedAt  DateTime @default(now())
+  isActive    Boolean  @default(true)
+
+  @@index([patientId])
+  @@index([patternType])
+  @@index([detectedAt])
+}
+
+// Appointment & Follow-up System
+model Appointment {
+  id             String            @id @default(cuid())
+  patient        Patient           @relation(fields: [patientId], references: [id])
+  patientId      String
+  assignedStaff  Staff?            @relation(fields: [staffId], references: [id])
+  staffId        String?
+  scheduledAt    DateTime
+  duration       Int               @default(30) // minutes
+  purpose        String?
+  type           VisitType
+  status         AppointmentStatus @default(SCHEDULED)
+  reminderSent   Boolean           @default(false)
+  reminderSentAt DateTime?
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([patientId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@index([staffId])
+  @@index([patientId, scheduledAt])
+}
+
+// System Analytics & Reporting
+model SystemAnalytic {
+  id         String   @id @default(cuid())
+  metric     String // "DAILY_VISITS", "AVERAGE_WAIT_TIME", "COMMON_DIAGNOSES"
+  value      Float
+  period     String // "DAILY", "WEEKLY", "MONTHLY"
+  date       DateTime @default(now())
+  department String?
+  metadata   String? // JSON with additional data
+
+  @@index([metric])
+  @@index([date])
+  @@index([period])
+}
+
+// Audit Log for Security & Compliance
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String // "LOGIN", "VIEW_RECORD", "UPDATE_RECORD", "DELETE"
+  userId     String?
+  userRole   String?
+  resource   String? // "Patient", "Visit", "LabResult"
+  resourceId String?
+  details    String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([action])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([resource, resourceId])
 }

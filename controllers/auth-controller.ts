@@ -23,40 +23,56 @@ function generateCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-export const register = async (req: AuthRequest, res: Response): Promise<void> => {
+// In your backend auth controller
+export const register = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { email, password, name, role } = req.body;
+        const { email, password, name, role = 'PATIENT' } = req.body;
 
+        console.log('Registration attempt:', { email, name, role });
+
+        // Validate input
         if (!email || !password) {
             res.status(400).json({ error: "Email and password are required" });
             return;
         }
 
-        const existing = await prisma.user.findUnique({ where: { email } });
-        if (existing) {
+        // Check if user already exists
+        const existingUser = await prisma.user.findUnique({
+            where: { email }
+        });
+
+        if (existingUser) {
+            console.log('User already exists:', email);
             res.status(400).json({ error: "User already exists" });
             return;
         }
 
-        const passwordHash = await bcrypt.hash(password, 12);
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 12);
 
+        // Create user
         const user = await prisma.user.create({
-            data: { email, name, passwordHash },
+            data: {
+                email,
+                passwordHash: hashedPassword,
+                name,
+                role,
+                isVerified: role !== 'PATIENT' // Auto-verify staff users
+            },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                isVerified: true,
+                createdAt: true
+            }
         });
 
-        const code = generateCode();
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-        await prisma.verificationCode.create({
-            data: { userId: user.id, code, expiresAt },
-        });
-
-        await sendEmail(email, "Your verification code", `Your verification code is: ${code}`);
-
-        console.log(`Verification code for ${email}: ${code}`);
-        res.status(201).json({ message: "User registered. Check email for verification code." });
+        console.log('User created successfully:', user.id);
+        res.status(201).json(user);
     } catch (error) {
-        console.error("Registration error:", error);
+        console.error("Register error:", error);
         res.status(500).json({ error: "Internal server error" });
     }
 };
